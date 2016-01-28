@@ -1589,7 +1589,14 @@ class ProfitBricksService(object):
         LOG.debug("Used URL: %r", url)
         LOG.debug("Request type: %r", type)
         if data:
-            LOG.debug("Data: %r", data)
+            data_out = "%r" % (data)
+            try:
+                data_out = json.loads(data)
+            except ValueError:
+                pass
+            else:
+                data_out = pp(data_out)
+            LOG.debug("Data:\n%s", data_out)
 
         if type == 'POST' or type == 'PUT':
             headers.update(

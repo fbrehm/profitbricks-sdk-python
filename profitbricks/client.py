@@ -1,6 +1,8 @@
 import base64
 import json
 import re
+import logging
+import pprint
 
 import requests
 from six.moves.urllib.parse import urlencode
@@ -8,6 +10,23 @@ from six.moves.urllib.parse import urlencode
 from profitbricks import (
     API_HOST,
     )
+
+LOG = logging.getLogger(__name__)
+
+
+def pp(value):
+    """
+    Returns a pretty print string of the given value.
+
+    @return: pretty print string
+    @rtype: str
+    """
+
+    pretty_printer = pprint.PrettyPrinter(indent=4)
+    return pretty_printer.pformat(value)
+
+
+
 
 """ProfitBricks Object Classes
 """
@@ -1555,6 +1574,7 @@ class ProfitBricksService(object):
                          stream=None):
 
         headers.update(self.headers)
+        LOG.debug("Headers:\n%s", pp(headers))
         session = requests.Session()
         return session.request(method, url, params, data, headers, cookies,
                                files, auth, timeout, allow_redirects, proxies,
@@ -1566,6 +1586,10 @@ class ProfitBricksService(object):
                                self.password))).decode('utf-8'))})
 
         url = self._build_url(url)
+        LOG.debug("Used URL: %r", url)
+        LOG.debug("Request type: %r", type)
+        if data:
+            LOG.debug("Data: %r", data)
 
         if type == 'POST' or type == 'PUT':
             headers.update(

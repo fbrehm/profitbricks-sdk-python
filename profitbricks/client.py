@@ -1877,6 +1877,9 @@ class ProfitBricksService(object):
             }
             properties['bootVolume'] = boot_volume
 
+        if server.cpu_family:
+            properties['cpuFamily'] = server.cpu_family
+
         if len(server.create_volumes) > 0:
             for volume in server.create_volumes:
                 volume_items.append(self._create_volume_dict(volume))
@@ -2200,10 +2203,9 @@ class Server(ProfitBricksService):
     '''
     This is the main class for managing server resources.
     '''
-    def __init__(self, name=None, cores=None, ram=None,
-                 availability_zone=None, boot_volume_id=None,
-                 boot_cdrom=None, create_volumes=[],
-                 attach_volumes=[], nics=[]):
+    def __init__(self, name=None, cores=None, ram=None, availability_zone=None,
+                 boot_volume_id=None, boot_cdrom=None, cpu_family=None,
+                 create_volumes=[], attach_volumes=[], nics=[]):
         """
         Server class initializer.
 
@@ -2216,8 +2218,7 @@ class Server(ProfitBricksService):
         :param      ram: The amount of memory for the server.
         :type       ram: ``str``
 
-        :param      availability_zone: The availability zone
-                                       for the server.
+        :param      availability_zone: The availability zone for the server.
         :type       availability_zone: ``str``
 
         :param      boot_volume_id: The ID of the boot volume.
@@ -2225,6 +2226,9 @@ class Server(ProfitBricksService):
 
         :param      boot_cdrom: Attach a CDROM.
         :type       boot_cdrom: ``str``
+
+        :param      cpu_family: Set the desired CPU type.
+        :type       cpu_family: ``str``
 
         :param      create_volumes: List of Volume dicts to create.
         :type       create_volumes: ``list``
@@ -2242,6 +2246,7 @@ class Server(ProfitBricksService):
         self.availability_zone = availability_zone
         self.boot_volume_id = boot_volume_id
         self.boot_cdrom = boot_cdrom
+        self.cpu_family = cpu_family
         self.create_volumes = create_volumes
         self.attach_volumes = attach_volumes
         self.nics = nics
@@ -2250,7 +2255,7 @@ class Server(ProfitBricksService):
         return ((
             '<Server: name=%s, cores=%s, ram=%s, '
             'availability_zone=%s, boot_volume_id=%s, '
-            'boot_cdrom=%s> ...>')
+            'boot_cdrom=%s, ...>')
             % (self.name, self.cores, self.ram,
                 self.availability_zone, self.boot_volume_id, self.boot_cdrom))
 
@@ -2295,6 +2300,6 @@ class Volume(ProfitBricksService):
 
     def __repr__(self):
         return ((
-            '<Volume: name=%s, size=%s, image=%s, bus=%s, disk_type=%s> ...>')
+            '<Volume: name=%s, size=%s, image=%s, bus=%s, disk_type=%s, ...>')
             % (self.name, str(self.size), self.image,
                 self.bus, self.disk_type))

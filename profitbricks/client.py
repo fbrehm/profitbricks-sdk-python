@@ -1631,11 +1631,14 @@ class ProfitBricksService(object):
                 if response.status_code == 202:
                     return True
 
-        if not response.ok:
-            err = response.json()
-            code = err['httpStatus']
-            msg = err['messages'][0]['message']
-            raise Exception(code, msg)
+        try:
+            if not response.ok:
+                err = response.json()
+                code = err['httpStatus']
+                msg = err['messages'][0]['message']
+                raise Exception(code, msg)
+        except ValueError as e:
+            raise Exception('Failed to parse the response', response.text)
 
         json_response = response.json()
 
@@ -2059,7 +2062,13 @@ class FirewallRule(ProfitBricksService):
         self.target_ip = target_ip
         self.port_range_start = port_range_start
         self.port_range_end = port_range_end
+
+        if icmp_type is not None:
+            icmp_type = str(icmp_type)
         self.icmp_type = icmp_type
+
+        if icmp_code is not None:
+            icmp_code = str(icmp_code)
         self.icmp_code = icmp_code
 
     def __repr__(self):
@@ -2290,7 +2299,7 @@ class Volume(ProfitBricksService):
 
         """
         self.name = name
-        self.size = size
+        self.size = int(size)
         self.image = image
         self.bus = bus
         self.disk_type = disk_type

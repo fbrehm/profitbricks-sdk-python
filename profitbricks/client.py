@@ -496,6 +496,7 @@ class ProfitBricksService(object):
 
         """
         properties = {
+            "name": ipblock.name,
             "location": ipblock.location,
             "size": str(ipblock.size).lower()
         }
@@ -2082,9 +2083,12 @@ class FirewallRule(ProfitBricksService):
 
 
 class IPBlock(ProfitBricksService):
-    def __init__(self, location=None, size=None):
+    def __init__(self, name=None, location=None, size=None):
         """
         IPBlock class initializer.
+
+        :param      name: The name of the IP Block.
+        :type       name: ``str``
 
         :param      location: The location for the IP Block.
         :type       location: ``str``
@@ -2093,6 +2097,7 @@ class IPBlock(ProfitBricksService):
         :type       size: ``str``
 
         """
+        self.name = name
         self.location = location
         self.size = size
 

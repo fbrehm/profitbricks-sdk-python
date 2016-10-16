@@ -87,7 +87,7 @@ Some object creation supports simple and complex requests, such as a server whic
         datacenter_id=datacenter_id,
         server=i)
 
-or if you want one with some volumes and NICs you would do: 
+Or if you want one with some volumes and NICs you would do: 
 
     from profitbricks.client import ProfitBricksService
     from profitbricks.client import Server, NIC, Volume
@@ -104,6 +104,7 @@ or if you want one with some volumes and NICs you would do:
         dhcp='true',
         lan=1,
         firewall_active=True,
+        nat=False
         )
 
     nic2 = NIC(
@@ -119,13 +120,18 @@ or if you want one with some volumes and NICs you would do:
         size=56,
         image='<IMAGE/SNAPSHOT-ID>',
         bus='VIRTIO'
+        ssh_keys=['ssh-rsa AAAAB3NzaC1yc2EAAAADAQ...'],
+        image_password='s3cr3tpass0rd',
+        availability_zone='ZONE_3'
         )
 
     volume2 = Volume(
         name='volume2',
         size=56,
         image='<IMAGE/SNAPSHOT-ID>',
-        bus='VIRTIO'
+        type='SSD',
+        bus='VIRTIO',
+        license_type='OTHER'
         )
 
     nics = [nic1, nic2]
@@ -135,6 +141,7 @@ or if you want one with some volumes and NICs you would do:
         name='server1',
         ram=4096,
         cores=4,
+        cpu_family='INTEL_XEON',
         nics=nics,
         create_volumes=create_volumes
         )
@@ -142,9 +149,14 @@ or if you want one with some volumes and NICs you would do:
     response = client.create_server(
         datacenter_id=datacenter_id, server=i)
 
+**Notes on volumes**:
+
+* You will need to provide either the `image` or the `licence_type` parameter. The `licence_type` is required, but ProfitBricks images will already have a `licence_type` set.
+* A list of public SSH keys and/or the image root password can added to the volume. Only official ProfitBricks base images support the `ssh_keys` and `image_password` parameters.
+
 ## Additional Documentation and Support
 
-You can find additional examples in our repo [here]. If you find any issues, please let us know via the DevOps Central community or GitHub's issue system and we'll check it out. 
+You can find additional examples in the repo `examples` directory. If you find any issues, please let us know via the DevOps Central community or GitHub's issue system and we'll check it out. 
 
 
 ## How to: Create a Datacenter

@@ -9,8 +9,14 @@ class PBError(Exception):
 class PBNotAuthorizedError(PBError):
     """HTTP data was invalid or unexpected."""
 
+
 class PBNotFoundError(PBError):
     """HTTP data was invalid or unexpected."""
 
+
 class PBValidationError(PBError):
+    """HTTP data was invalid or unexpected."""
+
+
+class PBRateLimitExceededError(PBError):
     """HTTP data was invalid or unexpected."""

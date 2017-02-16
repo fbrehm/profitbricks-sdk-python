@@ -11,7 +11,6 @@ from six.moves.urllib.parse import urlencode
 from profitbricks import (
     API_HOST, __version__
 )
-from profitbricks.errors import PBNotAuthorizedError, PBNotFoundError, PBValidationError, PBError
 
 LOG = logging.getLogger(__name__)
 
@@ -28,9 +27,16 @@ def pp(value):
     return pretty_printer.pformat(value)
 
 
+from profitbricks.errors import (
+    PBNotAuthorizedError,
+    PBNotFoundError,
+    PBValidationError,
+    PBRateLimitExceededError,
+    PBError
+)
+
+
 # ProfitBricks Object Classes
-
-
 class ProfitBricksService(object):
     """
         ProfitBricksClient Base Class

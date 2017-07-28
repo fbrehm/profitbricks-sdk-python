@@ -1,7 +1,22 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
+import time
 
 from helpers import configuration
-from helpers.resources import resource, wait_for_completion
+from helpers.resources import resource
 from profitbricks.client import Server, Volume
 from six import assertRegex
 
@@ -60,11 +75,10 @@ class TestDatacenter(unittest.TestCase):
             self.assertIn(self.resource['missing_attribute_error'] % 'location',
                           e.content[0]['message'])
 
-
     def test_remove_datacenter(self):
         datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, datacenter, 'remove_datacenter')
+        self.client.wait_for_completion(datacenter)
 
         response = self.client.delete_datacenter(
             datacenter_id=datacenter['id'])
@@ -75,7 +89,8 @@ class TestDatacenter(unittest.TestCase):
         datacenter = self.client.update_datacenter(
             datacenter_id=self.datacenter['id'],
             description=self.resource['datacenter']['name']+' - RENAME')
-        wait_for_completion(self.client, datacenter, 'update_datacenter')
+        self.client.wait_for_completion(datacenter)
+        time.sleep(10)
         datacenter = self.client.get_datacenter(datacenter_id=self.datacenter['id'])
 
         assertRegex(self, datacenter['id'], self.resource['uuid_match'])
@@ -90,7 +105,7 @@ class TestDatacenter(unittest.TestCase):
     def test_create_simple(self):
         datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, datacenter, 'create_datacenter')
+        self.client.wait_for_completion(datacenter)
 
         self.assertEqual(datacenter['type'], 'datacenter')
         self.assertEqual(datacenter['properties']['name'], self.resource['datacenter']['name'])
@@ -110,7 +125,7 @@ class TestDatacenter(unittest.TestCase):
 
         datacenter = self.client.create_datacenter(
             datacenter=datacenter_resource)
-        wait_for_completion(self.client, datacenter, 'create_datacenter_composite')
+        self.client.wait_for_completion(datacenter)
 
         self.assertEqual(datacenter['type'], 'datacenter')
         self.assertEqual(datacenter['properties']['name'],

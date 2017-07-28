@@ -1,7 +1,21 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 from helpers import configuration
-from helpers.resources import resource, wait_for_completion, find_image
+from helpers.resources import resource, find_image
 from profitbricks.client import Datacenter, Volume
 from profitbricks.client import ProfitBricksService
 from profitbricks.errors import PBError, PBNotFoundError
@@ -20,7 +34,7 @@ class TestVolume(unittest.TestCase):
         # Create test datacenter
         self.datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, self.datacenter, 'create_datacenter')
+        self.client.wait_for_completion(self.datacenter)
 
         self.image = find_image(self.client, configuration.IMAGE_NAME)
 
@@ -31,7 +45,7 @@ class TestVolume(unittest.TestCase):
         self.volume = self.client.create_volume(
             datacenter_id=self.datacenter['id'],
             volume=vol)
-        wait_for_completion(self.client, self.volume, 'create_volume')
+        self.client.wait_for_completion(self.volume)
 
         # Create snapshot1
         self.snapshot1 = self.client.create_snapshot(
@@ -39,8 +53,7 @@ class TestVolume(unittest.TestCase):
             volume_id=self.volume['id'],
             name=self.resource['snapshot']['name'],
             description=self.resource['snapshot']['description'])
-        wait_for_completion(self.client, self.snapshot1, 'create_snapshot1',
-                            wait_timeout=600)
+        self.client.wait_for_completion(self.snapshot1, timeout=600)
 
     @classmethod
     def tearDownClass(self):
@@ -58,7 +71,7 @@ class TestVolume(unittest.TestCase):
         self.assertEqual(volumes['items'][0]['properties']['size'],
                          self.resource['volume2']['size'])
         self.assertEqual(volumes['items'][0]['properties']['type'],
-                         self.resource['volume2']['type'])
+                         self.resource['volume2']['disk_type'])
         self.assertIsNone(volumes['items'][0]['properties']['bus'])
 
     def test_get_volume(self):
@@ -72,7 +85,7 @@ class TestVolume(unittest.TestCase):
         self.assertEqual(volume['properties']['size'], self.resource['volume2']['size'])
         self.assertEqual(volume['properties']['licenceType'],
                          self.image['properties']['licenceType'])
-        self.assertEqual(volume['properties']['type'], self.resource['volume2']['type'])
+        self.assertEqual(volume['properties']['type'], self.resource['volume2']['disk_type'])
         self.assertIsNone(volume['properties']['bus'])
         self.assertEqual(volume['properties']['availabilityZone'],
                          self.resource['volume2']['availability_zone'])
@@ -81,7 +94,7 @@ class TestVolume(unittest.TestCase):
         volume = self.client.create_volume(
             datacenter_id=self.datacenter['id'],
             volume=Volume(**self.resource['volume']))
-        wait_for_completion(self.client, volume, 'create_volume')
+        self.client.wait_for_completion(volume)
 
         volume = self.client.delete_volume(
             datacenter_id=self.datacenter['id'],
@@ -95,14 +108,15 @@ class TestVolume(unittest.TestCase):
             volume_id=self.volume['id'],
             size=6,
             name=self.resource['volume2']['name'] + ' - RENAME')
-        wait_for_completion(self.client, volume, 'update_volume')
+        self.client.wait_for_completion(volume)
 
         volume = self.client.get_volume(
             datacenter_id=self.datacenter['id'],
             volume_id=self.volume['id'])
 
         self.assertEqual(volume['id'], self.volume['id'])
-        self.assertEqual(volume['properties']['name'], self.resource['volume2']['name'] + ' - RENAME')
+        self.assertEqual(volume['properties']['name'],
+                         self.resource['volume2']['name'] + ' - RENAME')
         self.assertEqual(volume['properties']['size'], 6)
 
     def test_create_volume(self):
@@ -110,9 +124,10 @@ class TestVolume(unittest.TestCase):
         assertRegex(self, self.volume['id'], self.resource['uuid_match'])
         self.assertEqual(self.volume['properties']['name'], self.resource['volume2']['name'])
         self.assertEqual(self.volume['properties']['bus'], self.resource['volume2']['bus'])
-        self.assertEqual(self.volume['properties']['type'], self.resource['volume2']['type'])
+        self.assertEqual(self.volume['properties']['type'], self.resource['volume2']['disk_type'])
         self.assertEqual(self.volume['properties']['size'], self.resource['volume2']['size'])
-        self.assertEqual(self.volume['properties']['sshKeys'], self.resource['volume2']['ssh_keys'])
+        self.assertEqual(self.volume['properties']['sshKeys'],
+                         self.resource['volume2']['ssh_keys'])
         self.assertEqual(self.volume['properties']['availabilityZone'],
                          self.resource['volume2']['availability_zone'])
 

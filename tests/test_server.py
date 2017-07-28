@@ -1,12 +1,22 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 import time
 
 from helpers import configuration
-from helpers.resources import (
-    resource,
-    wait_for_completion,
-    check_detached_cdrom_gone
-)
+from helpers.resources import resource, check_detached_cdrom_gone
 from profitbricks.client import Datacenter, Server, Volume, NIC, FirewallRule
 from profitbricks.client import ProfitBricksService
 from profitbricks.errors import PBError, PBNotFoundError
@@ -25,19 +35,19 @@ class TestServer(unittest.TestCase):
         # Create test datacenter.
         self.datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, self.datacenter, 'create_datacenter')
+        self.client.wait_for_completion(self.datacenter)
 
         # Create test volume1.
         self.volume1 = self.client.create_volume(
             datacenter_id=self.datacenter['id'],
             volume=Volume(**self.resource['volume']))
-        wait_for_completion(self.client, self.volume1, 'create_volume')
+        self.client.wait_for_completion(self.volume1)
 
         # Create test volume2 (attach volume test).
         self.volume2 = self.client.create_volume(
             datacenter_id=self.datacenter['id'],
             volume=Volume(**self.resource['volume']))
-        wait_for_completion(self.client, self.volume2, 'create_volume')
+        self.client.wait_for_completion(self.volume2)
 
         # Create test server.
         server = Server(**self.resource['server'])
@@ -45,14 +55,14 @@ class TestServer(unittest.TestCase):
         self.server = self.client.create_server(
             datacenter_id=self.datacenter['id'],
             server=server)
-        wait_for_completion(self.client, self.server, 'create_server')
+        self.client.wait_for_completion(self.server)
 
         # Create test NIC.
         self.nic = self.client.create_nic(
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
             nic=NIC(**self.resource['nic']))
-        wait_for_completion(self.client, self.nic, 'create_nic')
+        self.client.wait_for_completion(self.nic)
 
         # Find an Ubuntu image for testing.
         for item in self.client.list_images()['items']:
@@ -79,7 +89,7 @@ class TestServer(unittest.TestCase):
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
             cdrom_id=self.test_image1['id'])
-        wait_for_completion(self.client, self.cdrom, 'attach_cdrom')
+        self.client.wait_for_completion(self.cdrom)
 
     @classmethod
     def tearDownClass(self):
@@ -104,7 +114,8 @@ class TestServer(unittest.TestCase):
         self.assertEqual(server['properties']['name'], self.resource['server']['name'])
         self.assertEqual(server['properties']['cores'], self.resource['server']['cores'])
         self.assertEqual(server['properties']['ram'], self.resource['server']['ram'])
-        self.assertEqual(server['properties']['availabilityZone'], self.resource['server']['availability_zone'])
+        self.assertEqual(server['properties']['availabilityZone'],
+                         self.resource['server']['availability_zone'])
         self.assertEqual(server['properties']['cpuFamily'], self.resource['server']['cpu_family'])
         # assertRegex(self, server['properties']['bootVolume']['id'], self.resource['uuid_match'])
 
@@ -121,7 +132,7 @@ class TestServer(unittest.TestCase):
             datacenter_id=self.datacenter['id'],
             server=Server(**self.resource['server'])
         )
-        wait_for_completion(self.client, server, 'delete_server')
+        self.client.wait_for_completion(server)
 
         response = self.client.delete_server(
             datacenter_id=self.datacenter['id'],
@@ -135,7 +146,7 @@ class TestServer(unittest.TestCase):
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
             name=self.resource['server']['name'] + ' RENAME')
-        wait_for_completion(self.client, server, 'update_server')
+        self.client.wait_for_completion(server)
         server = self.client.get_server(
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id']
@@ -153,8 +164,10 @@ class TestServer(unittest.TestCase):
         self.assertEqual(self.server['properties']['name'], self.resource['server']['name'])
         self.assertEqual(self.server['properties']['cores'], self.resource['server']['cores'])
         self.assertEqual(self.server['properties']['ram'], self.resource['server']['ram'])
-        self.assertEqual(self.server['properties']['availabilityZone'], self.resource['server']['availability_zone'])
-        self.assertEqual(self.server['properties']['cpuFamily'], self.resource['server']['cpu_family'])
+        self.assertEqual(self.server['properties']['availabilityZone'],
+                         self.resource['server']['availability_zone'])
+        self.assertEqual(self.server['properties']['cpuFamily'],
+                         self.resource['server']['cpu_family'])
         # assertRegex(self, server['properties']['bootVolume']['id'], self.resource['uuid_match'])
         # self.assertIsNone(self.server['properties']['availabilityZone'])
         self.assertIsNone(self.server['properties']['vmState'])
@@ -187,7 +200,7 @@ class TestServer(unittest.TestCase):
         composite_server = self.client.create_server(
             datacenter_id=self.datacenter['id'],
             server=server)
-        wait_for_completion(self.client, composite_server, 'create_composite', wait_timeout=600)
+        self.client.wait_for_completion(composite_server, timeout=600)
 
         composite_server = self.client.get_server(
             datacenter_id=self.datacenter['id'],
@@ -238,7 +251,7 @@ class TestServer(unittest.TestCase):
         self.assertEqual(volumes['items'][0]['properties']['bus'],
                          self.resource['volume']['bus'])
         self.assertEqual(volumes['items'][0]['properties']['type'],
-                         self.resource['volume']['type'])
+                         self.resource['volume']['disk_type'])
         self.assertEqual(volumes['items'][0]['properties']['licenceType'], 'UNKNOWN')
         self.assertIsNone(volumes['items'][0]['properties']['image'])
         self.assertIsNone(volumes['items'][0]['properties']['imagePassword'])
@@ -263,7 +276,7 @@ class TestServer(unittest.TestCase):
         self.assertEqual(volume['properties']['name'], self.resource['volume']['name'])
         self.assertEqual(volume['properties']['size'], self.resource['volume']['size'])
         self.assertEqual(volume['properties']['bus'], self.resource['volume']['bus'])
-        self.assertEqual(volume['properties']['type'], self.resource['volume']['type'])
+        self.assertEqual(volume['properties']['type'], self.resource['volume']['disk_type'])
         self.assertEqual(volume['properties']['licenceType'],
                          self.resource['volume']['licence_type'])
         self.assertIsNone(volume['properties']['image'])
@@ -284,12 +297,12 @@ class TestServer(unittest.TestCase):
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
             volume_id=self.volume2['id'])
-        wait_for_completion(self.client, volume, 'attach_volume')
+        self.client.wait_for_completion(volume)
 
         self.assertEqual(volume['id'], self.volume2['id'])
         self.assertEqual(volume['properties']['name'], self.resource['volume']['name'])
         self.assertEqual(volume['properties']['size'], self.resource['volume']['size'])
-        self.assertEqual(volume['properties']['type'], self.resource['volume']['type'])
+        self.assertEqual(volume['properties']['type'], self.resource['volume']['disk_type'])
         self.assertEqual(volume['properties']['licenceType'],
                          self.resource['volume']['licence_type'])
         self.assertIsNone(volume['properties']['bus'])
@@ -332,7 +345,7 @@ class TestServer(unittest.TestCase):
             server_id=self.server['id'],
             cdrom_id=self.test_image2['id'])
 
-        wait_for_completion(self.client, attached_cdrom, 'attach_cdrom', wait_timeout=600)
+        self.client.wait_for_completion(attached_cdrom, timeout=600)
         self.assertEqual(attached_cdrom['id'], self.test_image2['id'])
         self.assertEqual(attached_cdrom['properties']['name'],
                          self.test_image2['properties']['name'])
@@ -343,7 +356,7 @@ class TestServer(unittest.TestCase):
             server_id=self.server['id'],
             cdrom_id=self.test_image1['id'])
 
-        wait_for_completion(self.client, attached_cdrom, 'attach_cdrom', wait_timeout=600)
+        self.client.wait_for_completion(attached_cdrom, timeout=600)
         cdrom = self.client.get_attached_cdrom(
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
@@ -356,10 +369,14 @@ class TestServer(unittest.TestCase):
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
             cdrom_id=self.cdrom['id'])
-        time.sleep(5)
+        time.sleep(15)
 
         self.assertTrue(detached_cd)
-        self.assertRaises(PBNotFoundError, check_detached_cdrom_gone(self))
+
+        try:
+            check_detached_cdrom_gone(self)
+        except PBNotFoundError as e:
+            self.assertIn(self.resource['not_found_error'], e.content[0]['message'])
 
 
 if __name__ == '__main__':

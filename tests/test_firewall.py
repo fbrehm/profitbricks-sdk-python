@@ -1,7 +1,21 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 from helpers import configuration
-from helpers.resources import resource, wait_for_completion
+from helpers.resources import resource
 from profitbricks.client import ProfitBricksService
 from profitbricks.client import Datacenter, Server, LAN, NIC, FirewallRule
 from profitbricks.errors import PBError, PBNotFoundError
@@ -20,19 +34,19 @@ class TestFirewall(unittest.TestCase):
         # Create test datacenter.
         self.datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, self.datacenter, 'create_datacenter')
+        self.client.wait_for_completion(self.datacenter)
 
         # Create test LAN.
         self.lan = self.client.create_lan(
             datacenter_id=self.datacenter['id'],
             lan=LAN(**self.resource['lan']))
-        wait_for_completion(self.client, self.lan, 'create_lan')
+        self.client.wait_for_completion(self.lan)
 
         # Create test server.
         self.server = self.client.create_server(
             datacenter_id=self.datacenter['id'],
             server=Server(**self.resource['server']))
-        wait_for_completion(self.client, self.server, 'create_server')
+        self.client.wait_for_completion(self.server)
 
         # Create test NIC1.
         nic1 = NIC(**self.resource['nic'])
@@ -41,7 +55,7 @@ class TestFirewall(unittest.TestCase):
             datacenter_id=self.datacenter['id'],
             server_id=self.server['id'],
             nic=nic1)
-        wait_for_completion(self.client, self.nic1, 'create_nic1')
+        self.client.wait_for_completion(self.nic1)
 
         # Create test Firewall Rule
         fwrule = FirewallRule(**self.resource['fwrule'])
@@ -50,7 +64,7 @@ class TestFirewall(unittest.TestCase):
             server_id=self.server['id'],
             nic_id=self.nic1['id'],
             firewall_rule=fwrule)
-        wait_for_completion(self.client, self.fwrule, 'create_fwrule')
+        self.client.wait_for_completion(self.fwrule)
 
         # Create test Firewall Rule 2
         fwrule2 = FirewallRule(**self.resource['fwrule'])
@@ -62,7 +76,7 @@ class TestFirewall(unittest.TestCase):
             server_id=self.server['id'],
             nic_id=self.nic1['id'],
             firewall_rule=fwrule2)
-        wait_for_completion(self.client, self.fwrule2, 'create_fwrule2')
+        self.client.wait_for_completion(self.fwrule2)
 
     @classmethod
     def tearDownClass(self):
@@ -124,8 +138,10 @@ class TestFirewall(unittest.TestCase):
     def test_create_fwrule(self):
         self.assertEqual(self.fwrule['type'], 'firewall-rule')
         self.assertEqual(self.fwrule['properties']['name'], self.resource['fwrule']['name'])
-        self.assertEqual(self.fwrule['properties']['protocol'], self.resource['fwrule']['protocol'])
-        self.assertEqual(self.fwrule['properties']['sourceMac'], self.resource['fwrule']['source_mac'])
+        self.assertEqual(self.fwrule['properties']['protocol'],
+                         self.resource['fwrule']['protocol'])
+        self.assertEqual(self.fwrule['properties']['sourceMac'],
+                         self.resource['fwrule']['source_mac'])
         self.assertIsNone(self.fwrule['properties']['sourceIp'])
         self.assertIsNone(self.fwrule['properties']['targetIp'])
         self.assertIsNone(self.fwrule['properties']['icmpCode'])

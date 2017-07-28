@@ -1,8 +1,22 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 from random import randint
 
 from helpers import configuration
-from helpers.resources import resource, wait_for_completion, find_image
+from helpers.resources import resource, find_image
 from profitbricks.client import ProfitBricksService
 from profitbricks.client import Datacenter, IPBlock, User, Group, Volume
 from profitbricks.errors import PBError, PBNotFoundError
@@ -20,7 +34,7 @@ class TestUserManagement(unittest.TestCase):
         # Create datacenter resource
         self.datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, self.datacenter, 'create_datacenter')
+        self.client.wait_for_completion(self.datacenter)
 
         # Create volume resource
         volume = Volume(**self.resource['volume'])
@@ -29,7 +43,7 @@ class TestUserManagement(unittest.TestCase):
             volume=volume
         )
 
-        wait_for_completion(self.client, self.volume, 'create_volume')
+        self.client.wait_for_completion(self.volume)
 
         self.image = find_image(self.client, configuration.IMAGE_NAME)
 
@@ -39,7 +53,7 @@ class TestUserManagement(unittest.TestCase):
             volume_id=self.volume['id'],
             name=self.resource['snapshot']['name'])
 
-        wait_for_completion(self.client, self.snapshot, 'create_snapshot')
+        self.client.wait_for_completion(self.snapshot)
 
         # Reserve IP block resource
         self.ipblock = self.client.reserve_ipblock(IPBlock(**self.resource['ipblock']))
@@ -61,6 +75,14 @@ class TestUserManagement(unittest.TestCase):
             email='no-reply%s@example.com' % randint(0, 9999999999999),
             password='secretpassword123%s' % randint(0, 99999999))
         self.user2 = self.client.create_user(user=self.user_dict2)
+
+        # Create User 3
+        self.user_dict3 = User(
+            firstname='John',
+            lastname='Doe',
+            email='no-reply%s@example.com' % randint(0, 9999999999999),
+            password='secretpassword123%s' % randint(0, 99999999))
+        self.user3 = self.client.create_user(user=self.user_dict3)
 
         # Create Group 1
         group = Group(**self.resource['group'])
@@ -92,6 +114,7 @@ class TestUserManagement(unittest.TestCase):
     def tearDownClass(self):
         self.client.delete_snapshot(snapshot_id=self.snapshot['id'])
         self.client.delete_user(user_id=self.user1['id'])
+        self.client.delete_user(user_id=self.user3['id'])
         self.client.delete_group(group_id=self.group1['id'])
         self.client.delete_group(group_id=self.group3['id'])
         self.client.delete_ipblock(ipblock_id=self.ipblock['id'])
@@ -119,8 +142,10 @@ class TestUserManagement(unittest.TestCase):
         self.assertEqual(user['properties']['firstname'], self.user1['properties']['firstname'])
         self.assertEqual(user['properties']['lastname'], self.user1['properties']['lastname'])
         self.assertEqual(user['properties']['email'], self.user1['properties']['email'])
-        self.assertEqual(user['properties']['administrator'], self.user1['properties']['administrator'])
-        self.assertEqual(user['properties']['forceSecAuth'], self.user1['properties']['forceSecAuth'])
+        self.assertEqual(user['properties']['administrator'],
+                         self.user1['properties']['administrator'])
+        self.assertEqual(user['properties']['forceSecAuth'],
+                         self.user1['properties']['forceSecAuth'])
         self.assertFalse(user['properties']['secAuthActive'])
 
     def test_delete_user(self):
@@ -144,7 +169,8 @@ class TestUserManagement(unittest.TestCase):
         self.assertEqual(user['properties']['lastname'], self.user1['properties']['lastname'])
         self.assertEqual(user['properties']['email'], self.user1['properties']['email'])
         self.assertFalse(user['properties']['administrator'])
-        self.assertEqual(user['properties']['forceSecAuth'], self.user1['properties']['forceSecAuth'])
+        self.assertEqual(user['properties']['forceSecAuth'],
+                         self.user1['properties']['forceSecAuth'])
 
     def test_create_user_failure(self):
         try:
@@ -277,21 +303,21 @@ class TestUserManagement(unittest.TestCase):
             self.assertIn(self.resource['not_found_error'], e.content[0]['message'])
 
     def test_list_group_users(self):
-        users = self.client.list_group_users(group_id=self.group1['id'])
+        users = self.client.list_group_users(group_id=self.group3['id'])
 
         self.assertGreater(len(users['items']), 0)
         self.assertEqual(users['items'][0]['type'], 'user')
 
     def test_add_group_user(self):
-        user = self.client.add_group_user(group_id=self.group1['id'],
-                                           user_id=self.user1['id'])
+        user = self.client.add_group_user(group_id=self.group3['id'],
+                                          user_id=self.user3['id'])
 
-        self.assertEqual(user['id'], self.user1['id'])
+        self.assertEqual(user['id'], self.user3['id'])
         self.assertEqual(user['type'], 'user')
 
     def test_remove_group_user(self):
-        user = self.client.remove_group_user(group_id=self.group1['id'],
-                                             user_id=self.user1['id'])
+        user = self.client.remove_group_user(group_id=self.group3['id'],
+                                             user_id=self.user3['id'])
 
         self.assertTrue(user)
 
@@ -357,7 +383,7 @@ class TestUserManagement(unittest.TestCase):
         self.assertEqual(resource['id'], self.snapshot['id'])
         self.assertEqual(resource['type'], 'snapshot')
 
-    def test_list_ipblock_resources(self):
+    def test_list_ipblock_resources2(self):
         resource = self.client.get_resource(resource_type='ipblock',
                                             resource_id=self.ipblock['id'])
 

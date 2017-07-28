@@ -1,7 +1,21 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 from helpers import configuration
-from helpers.resources import resource, wait_for_completion
+from helpers.resources import resource
 from profitbricks.client import ProfitBricksService
 from profitbricks.client import Datacenter, Volume, Snapshot
 from profitbricks.errors import PBNotFoundError
@@ -19,7 +33,7 @@ class TestSnapshot(unittest.TestCase):
         # Create test datacenter.
         self.datacenter = self.client.create_datacenter(
             datacenter=Datacenter(**self.resource['datacenter']))
-        wait_for_completion(self.client, self.datacenter, 'create_datacenter')
+        self.client.wait_for_completion(self.datacenter)
 
         # Create test volume
         volume = Volume(**self.resource['volume'])
@@ -28,7 +42,7 @@ class TestSnapshot(unittest.TestCase):
             volume=volume
         )
 
-        wait_for_completion(self.client, self.volume, 'create_volume')
+        self.client.wait_for_completion(self.volume)
 
         # Create test volume1
         volume1 = Volume(**self.resource['volume'])
@@ -37,7 +51,7 @@ class TestSnapshot(unittest.TestCase):
             volume=volume1
         )
 
-        wait_for_completion(self.client, self.volume1, 'create_volume1')
+        self.client.wait_for_completion(self.volume1)
 
         # Create test snapshot
         snapshot = Snapshot(**self.resource['snapshot'])
@@ -47,7 +61,7 @@ class TestSnapshot(unittest.TestCase):
             name=snapshot.name,
             description=snapshot.description)
 
-        wait_for_completion(self.client, self.snapshot1, 'create_snapshot1')
+        self.client.wait_for_completion(self.snapshot1)
 
         # Create test snapshot2
         self.snapshot2 = self.client.create_snapshot(
@@ -56,7 +70,7 @@ class TestSnapshot(unittest.TestCase):
             name="python sdk test snapshot",
             description="snapshot test description")
 
-        wait_for_completion(self.client, self.snapshot2, 'create_snapshot2')
+        self.client.wait_for_completion(self.snapshot2)
 
     @classmethod
     def tearDownClass(self):
@@ -79,13 +93,16 @@ class TestSnapshot(unittest.TestCase):
                         self.resource['snapshot']['description'])
         self.assertEqual(snapshot['properties']['location'], configuration.LOCATION)
         self.assertEqual(snapshot['properties']['size'], self.volume['properties']['size'])
-        self.assertEqual(snapshot['properties']['cpuHotPlug'], self.volume['properties']['cpuHotPlug'])
+        self.assertEqual(snapshot['properties']['cpuHotPlug'],
+                         self.volume['properties']['cpuHotPlug'])
         self.assertEqual(snapshot['properties']['cpuHotUnplug'],
                          self.volume['properties']['cpuHotUnplug'])
-        self.assertEqual(snapshot['properties']['ramHotPlug'], self.volume['properties']['ramHotPlug'])
+        self.assertEqual(snapshot['properties']['ramHotPlug'],
+                         self.volume['properties']['ramHotPlug'])
         self.assertEqual(snapshot['properties']['ramHotUnplug'],
                          self.volume['properties']['ramHotUnplug'])
-        self.assertEqual(snapshot['properties']['nicHotPlug'], self.volume['properties']['nicHotPlug'])
+        self.assertEqual(snapshot['properties']['nicHotPlug'],
+                         self.volume['properties']['nicHotPlug'])
         self.assertEqual(snapshot['properties']['nicHotUnplug'],
                          self.volume['properties']['nicHotUnplug'])
         self.assertEqual(snapshot['properties']['discVirtioHotPlug'],
@@ -110,7 +127,7 @@ class TestSnapshot(unittest.TestCase):
             name=self.resource['snapshot']['name'] + ' - RENAME',
             description=self.resource['snapshot']['description'] + ' - RENAME')
 
-        wait_for_completion(self.client, snapshot, 'update_snapshot2')
+        self.client.wait_for_completion(snapshot)
 
         self.assertEqual(snapshot['type'], 'snapshot')
         self.assertEqual(snapshot['properties']['name'],

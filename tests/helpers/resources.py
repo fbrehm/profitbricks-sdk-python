@@ -1,5 +1,18 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import re
-import time
 
 from helpers import configuration
 
@@ -35,7 +48,7 @@ def resource():
             'name': 'Python SDK Test',
             'size': 10,
             'bus': 'VIRTIO',
-            'type': 'HDD',
+            'disk_type': 'HDD',
             'image_alias': 'ubuntu:latest',
             'availability_zone': 'ZONE_1'
         },
@@ -43,7 +56,7 @@ def resource():
             'name': 'Python SDK Test',
             'size': 2,
             'bus': 'VIRTIO',
-            'type': 'HDD',
+            'disk_type': 'HDD',
             'licence_type': 'UNKNOWN',
             'availability_zone': 'ZONE_1'
         },
@@ -51,7 +64,7 @@ def resource():
             'name': 'Python SDK Test',
             'size': 2,
             'bus': 'VIRTIO',
-            'type': 'HDD',
+            'disk_type': 'HDD',
             'availability_zone': 'ZONE_3',
             'ssh_keys': ['ssh-rsa AAAAB3NzaC1']
         },
@@ -125,28 +138,3 @@ def check_detached_cdrom_gone(parent):
             datacenter_id=parent.datacenter['id'],
             server_id=parent.server['id'],
             cdrom_id=parent.test_image1['id'])
-
-
-def wait_for_completion(conn, promise, msg, wait_timeout=300):
-    if not promise:
-        return
-    wait_timeout = time.time() + wait_timeout
-    while wait_timeout > time.time():
-        time.sleep(1)
-        operation_result = conn.get_request(
-            request_id=promise['requestId'],
-            status=True)
-
-        if operation_result['metadata']['status'] == "DONE":
-            return
-        elif operation_result['metadata']['status'] == "FAILED":
-            raise Exception(
-                'Request failed to complete'.format(
-                    msg, str(promise['requestId']))
-            )
-
-    raise Exception(
-        'Timed out waiting for async operation {0} msg {1} to '
-        'complete'.format(
-            msg, str(promise['requestId']))
-    )

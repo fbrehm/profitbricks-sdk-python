@@ -71,9 +71,6 @@ def pp(value):
 
 
 
-"""ProfitBricks Object Classes
-"""
-
 _LIBRARY_NAME = "profitbricks-sdk-python"
 
 

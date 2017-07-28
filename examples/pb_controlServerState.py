@@ -1,5 +1,20 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 # encoding: utf-8
+
+# Copyright 2016-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 '''
 pb_controlServerState -- control a server's state (start/stop)
 
@@ -90,8 +105,8 @@ def getServerInfo(pbclient=None, dc_id=None):
     for server in servers['items']:
         props = server['properties']
         info = dict(id=server['id'], name=props['name'],
-                     state=server['metadata']['state'],
-                     vmstate=props['vmState'])
+                    state=server['metadata']['state'],
+                    vmstate=props['vmState'])
         server_info.append(info)
     # end for(servers)
     return(server_info)
@@ -107,8 +122,8 @@ def select_where(info=None, select=None, **where):
         select = info[0].keys()
     server_info = []
     for old_si in info:
-        w_matches = all(old_si[wk]==wv for (wk,wv) in where.items())
-        new_si = {k:v for (k,v) in old_si.items() if k in select and w_matches}
+        w_matches = all(old_si[wk] == wv for (wk, wv) in where.items())
+        new_si = {k: v for (k, v) in old_si.items() if k in select and w_matches}
         if len(new_si) > 0:
             server_info.append(new_si)
     # end for(info)

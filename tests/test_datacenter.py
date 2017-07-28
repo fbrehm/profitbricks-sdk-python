@@ -1,178 +1,146 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
+import time
 
+from helpers import configuration
+from helpers.resources import resource
+from profitbricks.client import Server, Volume
+from six import assertRegex
+
+from profitbricks.client import Datacenter
 from profitbricks.client import ProfitBricksService
-from profitbricks.client import Datacenter, Volume, Server
-from profitbricks.client import LAN, NIC, LoadBalancer, FirewallRule
-
-datacenter_id = '700e1cab-99b2-4c30-ba8c-1d273ddba022'
+from profitbricks.errors import PBError, PBNotFoundError
 
 
 class TestDatacenter(unittest.TestCase):
-    def setUp(self):
-        self.datacenter = ProfitBricksService(
-            username='username', password='password')
+    @classmethod
+    def setUpClass(self):
+        self.resource = resource()
+        self.client = ProfitBricksService(
+            username=configuration.USERNAME,
+            password=configuration.PASSWORD,
+            headers=configuration.HEADERS)
 
-    def test_get_all(self):
-        datacenters = self.datacenter.list_datacenters()
+        # Create test datacenter.
+        self.datacenter = self.client.create_datacenter(
+            datacenter=Datacenter(**self.resource['datacenter']))
 
-        self.assertEqual(len(datacenters), 4)
-        self.assertEqual(datacenters['items'][0]['id'], datacenter_id)
-        # self.assertEqual(
-        #     datacenters['items'][0]['properties']['name'], 'datacenter1')
-        # self.assertEqual(
-        #     datacenters['items'][0]['properties']['description'], 'Description of my DC')
-        # self.assertEqual(
-        #     datacenters['items'][0]['properties']['location'], 'de/fkb')
-        # self.assertEqual(
-        #     datacenters['items'][0]['properties']['version'], 4)
+    @classmethod
+    def tearDownClass(self):
+        self.client.delete_datacenter(datacenter_id=self.datacenter['id'])
 
-    def test_get(self):
-        datacenter = self.datacenter.get_datacenter(
-            datacenter_id=datacenter_id)
+    def test_list_datacenters(self):
+        datacenters = self.client.list_datacenters()
 
-        self.assertEqual(datacenter['id'], datacenter_id)
-        self.assertEqual(datacenter['properties']['name'], 'datacenter1')
-        self.assertEqual(datacenter['properties']['description'], 'Description of my DC')
-        self.assertEqual(datacenter['properties']['version'], 4)
-        self.assertEqual(datacenter['properties']['location'], 'de/fkb')
+        self.assertGreater(len(datacenters), 0)
+        self.assertEqual(datacenters['items'][0]['type'], 'datacenter')
 
-    def test_delete(self):
-        datacenter = self.datacenter.delete_datacenter(
-            datacenter_id=datacenter_id)
+    def test_get_datacenter(self):
+        datacenter = self.client.get_datacenter(
+            datacenter_id=self.datacenter['id'])
 
-        self.assertTrue(datacenter)
+        assertRegex(self, datacenter['id'], self.resource['uuid_match'])
+        self.assertEqual(datacenter['type'], 'datacenter')
+        self.assertEqual(datacenter['id'], self.datacenter['id'])
+        self.assertEqual(datacenter['properties']['name'], self.resource['datacenter']['name'])
+        self.assertEqual(datacenter['properties']['description'],
+                         self.resource['datacenter']['description'])
+        self.assertEqual(datacenter['properties']['location'],
+                         self.resource['datacenter']['location'])
 
-    def test_update(self):
-        datacenter = self.datacenter.update_datacenter(
-            datacenter_id=datacenter_id,
-            name='Partially updated datacenter name')
+    def test_get_failure(self):
+        try:
+            self.client.get_datacenter(datacenter_id='00000000-0000-0000-0000-000000000000')
+        except PBNotFoundError as e:
+            self.assertIn(self.resource['not_found_error'], e.content[0]['message'])
 
-        self.assertEqual(datacenter['id'], datacenter_id)
-        self.assertEqual(datacenter['properties']['name'], 'datacenter1')
-        self.assertEqual(datacenter['properties']['description'], 'Description of my DC')
-        self.assertEqual(datacenter['properties']['version'], 4)
-        self.assertEqual(datacenter['properties']['location'], 'de/fkb')
+    def test_create_failure(self):
+        try:
+            datacenter = Datacenter(name=self.resource['datacenter']['name'])
+            self.client.create_datacenter(datacenter)
+        except PBError as e:
+            self.assertIn(self.resource['missing_attribute_error'] % 'location',
+                          e.content[0]['message'])
+
+    def test_remove_datacenter(self):
+        datacenter = self.client.create_datacenter(
+            datacenter=Datacenter(**self.resource['datacenter']))
+        self.client.wait_for_completion(datacenter)
+
+        response = self.client.delete_datacenter(
+            datacenter_id=datacenter['id'])
+
+        self.assertTrue(response)
+
+    def test_update_datacenter(self):
+        datacenter = self.client.update_datacenter(
+            datacenter_id=self.datacenter['id'],
+            description=self.resource['datacenter']['name']+' - RENAME')
+        self.client.wait_for_completion(datacenter)
+        time.sleep(10)
+        datacenter = self.client.get_datacenter(datacenter_id=self.datacenter['id'])
+
+        assertRegex(self, datacenter['id'], self.resource['uuid_match'])
+        self.assertEqual(datacenter['id'], self.datacenter['id'])
+        self.assertEqual(datacenter['properties']['name'], self.resource['datacenter']['name'])
+        self.assertEqual(datacenter['properties']['description'],
+                         self.resource['datacenter']['name']+' - RENAME')
+        self.assertEqual(datacenter['properties']['location'],
+                         self.resource['datacenter']['location'])
+        self.assertGreater(datacenter['properties']['version'], 1)
 
     def test_create_simple(self):
-        i = Datacenter(
-            name='datacenter1',
-            description='My New Datacenter',
-            location='de/fkb'
-            )
+        datacenter = self.client.create_datacenter(
+            datacenter=Datacenter(**self.resource['datacenter']))
+        self.client.wait_for_completion(datacenter)
 
-        response = self.datacenter.create_datacenter(datacenter=i)
+        self.assertEqual(datacenter['type'], 'datacenter')
+        self.assertEqual(datacenter['properties']['name'], self.resource['datacenter']['name'])
+        self.assertEqual(datacenter['properties']['description'],
+                         self.resource['datacenter']['description'])
+        self.assertEqual(datacenter['properties']['location'],
+                         self.resource['datacenter']['location'])
 
-        self.assertEqual(response['id'], datacenter_id)
-        self.assertEqual(response['properties']['name'], 'datacenter1')
-        self.assertEqual(response['properties']['description'], 'My New Datacenter')
-        self.assertEqual(response['properties']['version'], 4)
-        self.assertEqual(response['properties']['location'], 'de/fkb')
+        response = self.client.delete_datacenter(
+            datacenter_id=datacenter['id'])
+        self.assertTrue(response)
 
-    def test_create_complex(self):
-        """
-        Creates a complex Datacenter in a single request.
+    def test_create_composite(self):
+        datacenter_resource = Datacenter(**self.resource['datacenter_composite'])
+        datacenter_resource.servers = [Server(**self.resource['server'])]
+        datacenter_resource.volumes = [Volume(**self.resource['volume'])]
 
-        """
-        fwrule1 = FirewallRule(
-            name='Open SSH port',
-            protocol='TCP',
-            source_mac='01:23:45:67:89:00',
-            port_range_start=22
-            )
+        datacenter = self.client.create_datacenter(
+            datacenter=datacenter_resource)
+        self.client.wait_for_completion(datacenter)
 
-        fwrule2 = FirewallRule(
-            name='Allow PING',
-            protocol='ICMP',
-            icmp_type=8,
-            icmp_code=0
-            )
+        self.assertEqual(datacenter['type'], 'datacenter')
+        self.assertEqual(datacenter['properties']['name'],
+                         self.resource['datacenter_composite']['name'])
+        self.assertEqual(datacenter['properties']['description'],
+                         self.resource['datacenter_composite']['description'])
+        self.assertEqual(datacenter['properties']['location'],
+                         self.resource['datacenter_composite']['location'])
+        self.assertGreater(len(datacenter['entities']['servers']), 0)
+        self.assertGreater(len(datacenter['entities']['volumes']), 0)
 
-        fw_rules = [fwrule1, fwrule2]
+        response = self.client.delete_datacenter(
+            datacenter_id=datacenter['id'])
+        self.assertTrue(response)
 
-        nic1 = NIC(
-            name='nic1',
-            ips=['10.2.2.3'],
-            dhcp='true',
-            lan=1,
-            firewall_active=True,
-            firewall_rules=fw_rules
-            )
-
-        nic2 = NIC(
-            name='nic2',
-            ips=['10.2.3.4'],
-            dhcp='true',
-            lan=1,
-            firewall_active=True,
-            firewall_rules=fw_rules
-            )
-
-        nics = [nic1, nic2]
-
-        volume1 = Volume(
-            name='volume1',
-            size=56,
-            image='<IMAGE/SNAPSHOT-ID>',
-            bus='VIRTIO'
-            )
-
-        volume2 = Volume(
-            name='volume2',
-            size=56,
-            image='<IMAGE/SNAPSHOT-ID>',
-            bus='VIRTIO'
-            )
-
-        volumes = [volume2]
-
-        server1 = Server(
-            name='server1',
-            ram=4096,
-            cores=4,
-            nics=nics,
-            create_volumes=[volume1]
-            )
-
-        servers = [server1]
-
-        balancednics = ['<NIC-ID-1>', '<NIC-ID-2>']
-
-        loadbalancer1 = LoadBalancer(
-            name='My LB',
-            balancednics=balancednics)
-
-        loadbalancers = [loadbalancer1]
-
-        lan1 = LAN(
-            name='public Lan 4',
-            public=True
-            )
-
-        lan2 = LAN(
-            name='public Lan 4',
-            public=True
-            )
-
-        lans = [lan1, lan2]
-
-        d = Datacenter(
-            name='datacenter1',
-            description='my DC',
-            location='de/fkb',
-            servers=servers,
-            volumes=volumes,
-            loadbalancers=loadbalancers,
-            lans=lans
-            )
-
-        response = self.datacenter.create_datacenter(datacenter=d)
-        print(response)
-
-        self.assertEqual(response['id'], datacenter_id)
-        self.assertEqual(response['properties']['name'], 'My New Datacenter')
-        self.assertEqual(response['properties']['description'], 'Production environment')
-        self.assertEqual(response['properties']['version'], 4)
-        self.assertEqual(response['properties']['location'], 'de/fkb')
 
 if __name__ == '__main__':
     unittest.main()

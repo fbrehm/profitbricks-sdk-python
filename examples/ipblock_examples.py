@@ -1,9 +1,26 @@
+#!/usr/bin/python3
+
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
 """List IPBlocks
 """
 from profitbricks.client import ProfitBricksService
 
 client = ProfitBricksService(
-    username='username', password='password')
+    username=os.getenv('PROFITBRICKS_USERNAME'), password=os.getenv('PROFITBRICKS_PASSWORD'))
 
 ipblocks = client.list_ipblocks()
 
@@ -11,22 +28,17 @@ print(ipblocks)
 
 """Reserve IPBlock
 """
-from profitbricks.client import ProfitBricksService, IPBlock
+from profitbricks.client import ProfitBricksService, IPBlock  # noqa
 
-client = ProfitBricksService(
-    username='username', password='password')
-
-i = IPBlock(location='de/fra', size=5)
+i = IPBlock(name='py-test', location='de/fra', size=1)
 
 ipblock = client.reserve_ipblock(i)
 
 """Release IPBlock
 """
-from profitbricks.client import ProfitBricksService
+from profitbricks.client import ProfitBricksService  # noqa
 
-ipblock_id = '854467eb-a0d3-4651-ac83-754e2faedba4'
+ipblock_id = ipblock['id']
 
-client = ProfitBricksService(
-    username='username', password='password')
 
 ipblock = client.delete_ipblock(ipblock_id)

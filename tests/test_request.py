@@ -20,7 +20,7 @@ from profitbricks.client import ProfitBricksService
 from profitbricks.errors import PBNotFoundError
 
 
-class TestLocation(unittest.TestCase):
+class TestRequest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         self.resource = resource()
@@ -29,23 +29,33 @@ class TestLocation(unittest.TestCase):
             password=configuration.PASSWORD,
             headers=configuration.HEADERS)
 
-    def test_list_locations(self):
-        locations = self.client.list_locations()
+        self.requests = self.client.list_requests()
+        self.request = self.requests['items'][0]
 
-        self.assertEqual(len(locations), 4)
-        for location in locations['items']:
-            self.assertEqual(location['type'], 'location')
-            self.assertIn(location['id'], self.resource['locations'])
+    def test_list_requests(self):
+        requests = self.client.list_requests()
 
-    def test_get_location(self):
-        location = self.client.get_location(configuration.LOCATION)
+        self.assertGreater(len(requests), 0)
+        self.assertEqual(requests['items'][0]['type'], 'request')
 
-        self.assertEqual(location['type'], 'location')
-        self.assertEqual(location['id'], configuration.LOCATION)
+    def test_get_request(self):
+        request = self.client.get_request(request_id=self.request['id'], status=False)
+
+        self.assertEqual(request['type'], 'request')
+        self.assertEqual(request['id'], self.request['id'])
+        self.assertEqual(request['href'], self.request['href'])
+
+    def test_get_request_status(self):
+        request = self.client.get_request(request_id=self.request['id'], status=True)
+
+        self.assertEqual(request['type'], 'request-status')
+        self.assertEqual(request['id'], self.request['id'] + '/status')
+        self.assertEqual(request['href'], self.request['href'] + '/status')
 
     def test_get_failure(self):
         try:
-            self.client.get_location(location_id='00000000-0000-0000-0000-000000000000')
+            self.client.get_request(request_id='00000000-0000-0000-0000-000000000000',
+                                    status=False)
         except PBNotFoundError as e:
             self.assertIn(self.resource['not_found_error'], e.content[0]['message'])
 

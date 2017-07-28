@@ -1,3 +1,19 @@
+#!/usr/bin/python3
+
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Create volume
 """
 
@@ -20,7 +36,7 @@ response = client.create_volume(
 """Create snapshot
 """
 
-from profitbricks.client import ProfitBricksService
+from profitbricks.client import ProfitBricksService  # noqa
 
 datacenter_id = '700e1cab-99b2-4c30-ba8c-1d273ddba022'
 volume_id = '700e1cab-99b2-4c30-ba8c-1d273ddba025'
@@ -31,12 +47,12 @@ client = ProfitBricksService(
 volume = client.create_snapshot(
     datacenter_id=datacenter_id,
     volume_id=volume_id,
-    snapshot_name='<URLENCODED_SNAPSHOT_NAME>',
-    snapshot_description='<URLENCODED_SNAPSHOT_DESCRIPTION>')
+    name='<URLENCODED_SNAPSHOT_NAME>',
+    description='<URLENCODED_SNAPSHOT_DESCRIPTION>')
 
 """Restore Snapshot
 """
-from profitbricks.client import ProfitBricksService
+from profitbricks.client import ProfitBricksService  # noqa
 
 datacenter_id = '700e1cab-99b2-4c30-ba8c-1d273ddba022'
 volume_id = '700e1cab-99b2-4c30-ba8c-1d273ddba025'
@@ -54,7 +70,7 @@ response = client.restore_snapshot(
 """Update Volume
 """
 
-from profitbricks.client import ProfitBricksService
+from profitbricks.client import ProfitBricksService  # noqa
 
 datacenter_id = '700e1cab-99b2-4c30-ba8c-1d273ddba022'
 volume_id = '700e1cab-99b2-4c30-ba8c-1d273ddba025'

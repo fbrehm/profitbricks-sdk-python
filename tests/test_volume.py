@@ -1,174 +1,175 @@
+# Copyright 2015-2017 ProfitBricks GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
-from profitbricks.client import ProfitBricksService, Volume
-
-volume_id = '700e1cab-99b2-4c30-ba8c-1d273ddba025'
-datacenter_id = '700e1cab-99b2-4c30-ba8c-1d273ddba022'
-snapshot_id = '7df81087-5835-41c6-a10b-3e098593bba4'
+from helpers import configuration
+from helpers.resources import resource, find_image
+from profitbricks.client import Datacenter, Volume
+from profitbricks.client import ProfitBricksService
+from profitbricks.errors import PBError, PBNotFoundError
+from six import assertRegex
 
 
 class TestVolume(unittest.TestCase):
-    def setUp(self):
-        self.volume = ProfitBricksService(
-            username='username', password='password')
+    @classmethod
+    def setUpClass(self):
+        self.resource = resource()
+        self.client = ProfitBricksService(
+            username=configuration.USERNAME,
+            password=configuration.PASSWORD,
+            headers=configuration.HEADERS)
+
+        # Create test datacenter
+        self.datacenter = self.client.create_datacenter(
+            datacenter=Datacenter(**self.resource['datacenter']))
+        self.client.wait_for_completion(self.datacenter)
+
+        self.image = find_image(self.client, configuration.IMAGE_NAME)
+
+        # Create test volume
+        vol = Volume(**self.resource['volume2'])
+        vol.image = self.image['id']
+
+        self.volume = self.client.create_volume(
+            datacenter_id=self.datacenter['id'],
+            volume=vol)
+        self.client.wait_for_completion(self.volume)
+
+        # Create snapshot1
+        self.snapshot1 = self.client.create_snapshot(
+            datacenter_id=self.datacenter['id'],
+            volume_id=self.volume['id'],
+            name=self.resource['snapshot']['name'],
+            description=self.resource['snapshot']['description'])
+        self.client.wait_for_completion(self.snapshot1, timeout=600)
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.delete_datacenter(datacenter_id=self.datacenter['id'])
 
     def test_list_volumes(self):
-        volumes = self.volume.list_volumes(
-            datacenter_id=datacenter_id)
+        volumes = self.client.list_volumes(
+            datacenter_id=self.datacenter['id'])
 
-        self.assertEqual(len(volumes), 4)
-        self.assertEqual(volumes['items'][0]['id'], volume_id)
-        self.assertEqual(volumes['items'][0]['properties']['name'], 'my boot volume for server 1')
-        self.assertEqual(volumes['items'][0]['properties']['size'], 80)
-        self.assertEqual(volumes['items'][0]['properties']['licenceType'], 'WINDOWS')
-        self.assertFalse(volumes['items'][0]['properties']['cpuHotPlug'])
-        self.assertFalse(volumes['items'][0]['properties']['cpuHotUnplug'])
-        self.assertFalse(volumes['items'][0]['properties']['ramHotPlug'])
-        self.assertFalse(volumes['items'][0]['properties']['ramHotUnplug'])
-        self.assertFalse(volumes['items'][0]['properties']['nicHotPlug'])
-        self.assertFalse(volumes['items'][0]['properties']['nicHotUnplug'])
-        self.assertFalse(volumes['items'][0]['properties']['discVirtioHotPlug'])
-        self.assertFalse(volumes['items'][0]['properties']['discVirtioHotUnplug'])
-        self.assertFalse(volumes['items'][0]['properties']['discScsiHotPlug'])
-        self.assertFalse(volumes['items'][0]['properties']['discScsiHotUnplug'])
-        self.assertEqual(volumes['items'][0]['properties']['bus'], 'VIRTIO')
-        self.assertEqual(volumes['items'][0]['properties']['type'], 'HDD')
+        self.assertGreater(len(volumes), 0)
+        assertRegex(self, volumes['items'][0]['id'], self.resource['uuid_match'])
+        self.assertEqual(volumes['items'][0]['type'], 'volume')
+        self.assertEqual(volumes['items'][0]['properties']['name'],
+                         self.resource['volume2']['name'])
+        self.assertEqual(volumes['items'][0]['properties']['size'],
+                         self.resource['volume2']['size'])
+        self.assertEqual(volumes['items'][0]['properties']['type'],
+                         self.resource['volume2']['disk_type'])
+        self.assertIsNone(volumes['items'][0]['properties']['bus'])
 
     def test_get_volume(self):
-        volume = self.volume.get_volume(
-            datacenter_id=datacenter_id,
-            volume_id=volume_id)
+        volume = self.client.get_volume(
+            datacenter_id=self.datacenter['id'],
+            volume_id=self.volume['id'])
 
-        self.assertEqual(volume['properties']['name'], 'my boot volume for server 1')
-        self.assertEqual(volume['properties']['size'], 80)
-        self.assertEqual(volume['properties']['licenceType'], 'WINDOWS')
-        self.assertFalse(volume['properties']['cpuHotPlug'])
-        self.assertFalse(volume['properties']['cpuHotUnplug'])
-        self.assertFalse(volume['properties']['ramHotPlug'])
-        self.assertFalse(volume['properties']['ramHotUnplug'])
-        self.assertFalse(volume['properties']['nicHotPlug'])
-        self.assertFalse(volume['properties']['nicHotUnplug'])
-        self.assertFalse(volume['properties']['discVirtioHotPlug'])
-        self.assertFalse(volume['properties']['discVirtioHotUnplug'])
-        self.assertFalse(volume['properties']['discScsiHotPlug'])
-        self.assertFalse(volume['properties']['discScsiHotUnplug'])
-        self.assertEqual(volume['properties']['bus'], 'VIRTIO')
-        self.assertEqual(volume['properties']['type'], 'HDD')
+        self.assertEqual(volume['id'], self.volume['id'])
+        self.assertEqual(volume['type'], 'volume')
+        self.assertEqual(volume['properties']['name'], self.resource['volume2']['name'])
+        self.assertEqual(volume['properties']['size'], self.resource['volume2']['size'])
+        self.assertEqual(volume['properties']['licenceType'],
+                         self.image['properties']['licenceType'])
+        self.assertEqual(volume['properties']['type'], self.resource['volume2']['disk_type'])
+        self.assertIsNone(volume['properties']['bus'])
+        self.assertEqual(volume['properties']['availabilityZone'],
+                         self.resource['volume2']['availability_zone'])
 
     def test_delete_volume(self):
-        volume = self.volume.delete_volume(
-            datacenter_id=datacenter_id,
-            volume_id=volume_id)
+        volume = self.client.create_volume(
+            datacenter_id=self.datacenter['id'],
+            volume=Volume(**self.resource['volume']))
+        self.client.wait_for_completion(volume)
+
+        volume = self.client.delete_volume(
+            datacenter_id=self.datacenter['id'],
+            volume_id=volume['id'])
 
         self.assertTrue(volume)
 
     def test_update_volume(self):
-        volume = self.volume.update_volume(
-            datacenter_id=datacenter_id,
-            volume_id=volume_id,
-            size=100,
-            name='Resized storage to 100 GB',
-            cpu_hot_unplug=True)
+        volume = self.client.update_volume(
+            datacenter_id=self.datacenter['id'],
+            volume_id=self.volume['id'],
+            size=6,
+            name=self.resource['volume2']['name'] + ' - RENAME')
+        self.client.wait_for_completion(volume)
 
-        self.assertEqual(
-            volume['properties']['name'], 'Resized storage to 100 GB')
-        self.assertEqual(volume['properties']['size'], 100)
+        volume = self.client.get_volume(
+            datacenter_id=self.datacenter['id'],
+            volume_id=self.volume['id'])
+
+        self.assertEqual(volume['id'], self.volume['id'])
+        self.assertEqual(volume['properties']['name'],
+                         self.resource['volume2']['name'] + ' - RENAME')
+        self.assertEqual(volume['properties']['size'], 6)
 
     def test_create_volume(self):
-        i = Volume(
-            name='Explicitly created volume',
-            size=56,
-            image='<IMAGE/SNAPSHOT-ID>',
-            bus='VIRTIO')
-
-        response = self.volume.create_volume(
-            datacenter_id=datacenter_id, volume=i)
-
-        self.assertEqual(
-            response['properties']['name'], 'my boot volume for server 1')
-        self.assertEqual(response['properties']['size'], 80)
-        self.assertEqual(response['properties']['licenceType'], 'WINDOWS')
-        self.assertFalse(response['properties']['cpuHotPlug'])
-        self.assertFalse(response['properties']['cpuHotUnplug'])
-        self.assertFalse(response['properties']['ramHotPlug'])
-        self.assertFalse(response['properties']['ramHotUnplug'])
-        self.assertFalse(response['properties']['nicHotPlug'])
-        self.assertFalse(response['properties']['nicHotUnplug'])
-        self.assertFalse(response['properties']['discVirtioHotPlug'])
-        self.assertFalse(response['properties']['discVirtioHotUnplug'])
-        self.assertFalse(response['properties']['discScsiHotPlug'])
-        self.assertFalse(response['properties']['discScsiHotUnplug'])
-        self.assertEqual(response['properties']['bus'], 'VIRTIO')
-        self.assertEqual(response['properties']['type'], 'HDD')
-
-    def test_create_optional_value(self):
-        i = Volume(
-            name='Explicitly created volume',
-            size=56,
-            image='<IMAGE/SNAPSHOT-ID>',
-            bus='VIRTIO',
-            ram_hot_plug=True,
-            cpu_hot_unplug=True)
-
-        response = self.volume.create_volume(
-            datacenter_id=datacenter_id, volume=i)
-
-        self.assertEqual(
-            response['properties']['name'], 'my boot volume for server 1')
-        self.assertEqual(response['properties']['size'], 80)
-        self.assertEqual(response['properties']['licenceType'], 'WINDOWS')
-        self.assertFalse(response['properties']['cpuHotPlug'])
-        self.assertFalse(response['properties']['cpuHotUnplug'])
-        self.assertFalse(response['properties']['ramHotPlug'])
-        self.assertFalse(response['properties']['ramHotUnplug'])
-        self.assertFalse(response['properties']['nicHotPlug'])
-        self.assertFalse(response['properties']['nicHotUnplug'])
-        self.assertFalse(response['properties']['discVirtioHotPlug'])
-        self.assertFalse(response['properties']['discVirtioHotUnplug'])
-        self.assertFalse(response['properties']['discScsiHotPlug'])
-        self.assertFalse(response['properties']['discScsiHotUnplug'])
-        self.assertEqual(response['properties']['bus'], 'VIRTIO')
-        self.assertEqual(response['properties']['type'], 'HDD')
+        # Use volume created during volume test setup.
+        assertRegex(self, self.volume['id'], self.resource['uuid_match'])
+        self.assertEqual(self.volume['properties']['name'], self.resource['volume2']['name'])
+        self.assertEqual(self.volume['properties']['bus'], self.resource['volume2']['bus'])
+        self.assertEqual(self.volume['properties']['type'], self.resource['volume2']['disk_type'])
+        self.assertEqual(self.volume['properties']['size'], self.resource['volume2']['size'])
+        self.assertEqual(self.volume['properties']['sshKeys'],
+                         self.resource['volume2']['ssh_keys'])
+        self.assertEqual(self.volume['properties']['availabilityZone'],
+                         self.resource['volume2']['availability_zone'])
 
     def test_create_snapshot(self):
-        volume = self.volume.create_snapshot(
-            datacenter_id=datacenter_id,
-            volume_id=volume_id,
-            name='<URLENCODED_SNAPSHOT_NAME>',
-            description='<URLENCODED_SNAPSHOT_DESCRIPTION>')
-
-        self.assertEqual(volume['id'], snapshot_id)
-        self.assertEqual(
-            volume['properties']['name'],
-            'Snapshot of storage X on 12.12.12 12:12:12 - updated')
-        self.assertEqual(volume['properties']['description'],
-                         'description of a snapshot - updated')
-        self.assertEqual(volume['properties']['location'], 'de/fkb')
-        self.assertEqual(volume['properties']['size'], 28)
-        self.assertEqual(volume['properties']['licenceType'], 'WINDOWS')
-        self.assertFalse(volume['properties']['cpuHotPlug'])
-        self.assertFalse(volume['properties']['cpuHotUnplug'])
-        self.assertFalse(volume['properties']['ramHotPlug'])
-        self.assertFalse(volume['properties']['ramHotUnplug'])
-        self.assertFalse(volume['properties']['nicHotPlug'])
-        self.assertFalse(volume['properties']['nicHotUnplug'])
-        self.assertFalse(volume['properties']['discVirtioHotPlug'])
-        self.assertFalse(volume['properties']['discVirtioHotUnplug'])
-        self.assertFalse(volume['properties']['discScsiHotPlug'])
-        self.assertFalse(volume['properties']['discScsiHotUnplug'])
+        # Use snapshot created during volume test setup.
+        self.assertEqual(self.snapshot1['type'], 'snapshot')
+        self.assertEqual(self.snapshot1['properties']['name'], self.resource['snapshot']['name'])
+        self.assertEqual(self.snapshot1['properties']['description'],
+                         self.resource['snapshot']['description'])
+        self.assertEqual(self.snapshot1['properties']['location'], configuration.LOCATION)
+        self.assertIsNone(self.snapshot1['properties']['size'])
+        self.assertIsNone(self.snapshot1['properties']['licenceType'])
 
     def test_restore_snapshot(self):
-        response = self.volume.restore_snapshot(
-            datacenter_id=datacenter_id,
-            volume_id=volume_id,
-            snapshot_id=snapshot_id)
+        response = self.client.restore_snapshot(
+            datacenter_id=self.datacenter['id'],
+            volume_id=self.volume['id'],
+            snapshot_id=self.snapshot1['id'])
 
         self.assertTrue(response)
 
     def test_remove_snapshot(self):
-        volume = self.volume.remove_snapshot(snapshot_id=snapshot_id)
+        volume = self.client.remove_snapshot(snapshot_id=self.snapshot1['id'])
 
         self.assertTrue(volume)
+
+    def test_get_failure(self):
+        try:
+            self.client.get_volume(
+                datacenter_id=self.datacenter['id'],
+                volume_id='00000000-0000-0000-0000-000000000000')
+        except PBNotFoundError as e:
+            self.assertIn(self.resource['not_found_error'], e.content[0]['message'])
+
+    def test_create_failure(self):
+        try:
+            volume = Volume(name=self.resource['volume2']['name'])
+            self.client.create_volume(datacenter_id=self.datacenter['id'], volume=volume)
+        except PBError as e:
+            self.assertIn(self.resource['missing_attribute_error'] % 'size',
+                          e.content[0]['message'])
+
 
 if __name__ == '__main__':
     unittest.main()
